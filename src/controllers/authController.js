@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { User } from "../models/User.js";
-import { signToken } from "../utils/jwt.js";
+import { signToken } from "../utlis/jwt.js";
 import { env } from "../config/env.js";
 
 export async function register(req, res) {

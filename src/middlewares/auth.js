@@ -1,4 +1,4 @@
-import { verifyToken } from "../utils/jwt.js";
+import { verifyToken } from "../utlis/jwt.js";
 
 export function auth(req, res, next) {
   try {
