@@ -62,20 +62,21 @@ export async function submitExam(req, res) {
   const now = new Date();
   const expired = now > endAt;
 
+  // fetch questions with correct answers
   const questionDocs = await Question.find({
     _id: { $in: submission.questionIds },
-  }).select("_id correctIndex");
+  }).select("_id text options correctIndex");
+
   const correctMap = new Map(
-    questionDocs.map((q) => [q._id.toString(), q.correctIndex])
+    questionDocs.map((q) => [String(q._id), q.correctIndex])
   );
 
   let score = 0;
   const normalizedAnswers = [];
   for (const a of answers) {
-    const qid = a.questionId;
+    const qid = String(a.questionId);
     const sel = Number.isInteger(a.selectedIndex) ? a.selectedIndex : -1;
-    const correctIdx = correctMap.get(qid);
-    if (typeof correctIdx === "number" && sel === correctIdx) score++;
+    if (sel === correctMap.get(qid)) score++;
     normalizedAnswers.push({
       questionId: new mongoose.Types.ObjectId(qid),
       selectedIndex: sel,
@@ -88,11 +89,29 @@ export async function submitExam(req, res) {
   submission.status = expired ? "expired" : "submitted";
   await submission.save();
 
+  // build detailed results
+  const results = questionDocs.map((q) => {
+    const userAnswer = normalizedAnswers.find(
+      (a) => String(a.questionId) === String(q._id)
+    );
+    return {
+      _id: q._id,
+      text: q.text,
+      options: q.options,
+      correctIndex: q.correctIndex, // ✅ include correct answer
+      selectedIndex: userAnswer ? userAnswer.selectedIndex : -1,
+      isCorrect: userAnswer
+        ? userAnswer.selectedIndex === q.correctIndex
+        : false,
+    };
+  });
+
   res.json({
     submissionId: submission._id,
     score,
     total: submission.questionIds.length,
     status: submission.status,
     timeExpired: expired,
+    results, // ✅ send question-level result
   });
 }
